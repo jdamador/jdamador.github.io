@@ -1,6 +1,12 @@
 /* Masume — a genkouyoushi (manuscript paper) desk. Green grid lines, graphite ink, highlighter yellow.
    Tokens first, then shell, then components, then views, then print. */
 
+/* Textbook-style kana everywhere. Gothic fonts join strokes that are written separately (the last two of
+   さ and き, for example). "Masume Kana" is Klee One cut down to hiragana and katakana only (fonts/, SIL OFL)
+   and sits first in every font stack, so kana use it while Latin text and kanji keep their own fonts. */
+@font-face { font-family: "Masume Kana"; src: url("fonts/klee-kana-400.woff2") format("woff2"); font-weight: 100 500; font-display: swap; unicode-range: U+3041-3096, U+309D-309E, U+30A1-30FE; }
+@font-face { font-family: "Masume Kana"; src: url("fonts/klee-kana-600.woff2") format("woff2"); font-weight: 600 900; font-display: swap; unicode-range: U+3041-3096, U+309D-309E, U+30A1-30FE; }
+
 :root {
   --paper: #f4f7f5;
   --sheet: #ffffff;
@@ -24,9 +30,9 @@
   --spine-soft: #a3c4b6;
   --c1: #bfe0d0; --c2: #8ccbb0; --c3: #4daa86; --c4: #1f7a5c;
   --h0: #e3e9e6; --h1: #f3b6c0; --h2: #ffe9a0; --h3: #bfe0d0; --h4: #7bc4a4;
-  --f-display: "Bricolage Grotesque", "Avenir Next", "Helvetica Neue", system-ui, sans-serif;
-  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --f-kana: "Klee One", "Klee", "Hiragino Maru Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --f-display: "Masume Kana", "Bricolage Grotesque", "Avenir Next", "Helvetica Neue", system-ui, sans-serif;
+  --f-body: "Masume Kana", "Zen Kaku Gothic New", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-kana: "Masume Kana", "Klee One", "Klee", "Hiragino Maru Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
   --rail-w: 252px;
   --radius: 6px;
 }
