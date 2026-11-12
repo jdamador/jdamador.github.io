@@ -84,8 +84,14 @@
   /* ---------- Speech ---------- */
   const SPEAK_FIX = { っ: 'きって', ッ: 'キッテ', ぁ: 'あ', ぃ: 'い', ぅ: 'う', ぇ: 'え', ぉ: 'お', ゃ: 'や', ゅ: 'ゆ', ょ: 'よ', ァ: 'ア', ィ: 'イ', ゥ: 'ウ', ェ: 'エ', ォ: 'オ', ャ: 'ヤ', ュ: 'ユ', ョ: 'ヨ', ゎ: 'わ', ー: 'あー', ん: 'ん', ン: 'ン' };
   let noVoiceShown = false;
+  /* Recorded audio (audio/*.mp3, listed in audio/manifest.js) plays first, so pronunciation works
+     without any voice installed. The system voice is only the fallback for text with no recording. */
+  let player = null;
+  const recording = (t) => { const id = MS.audio && MS.audio[t]; return id ? 'audio/' + id + '.mp3' : null; };
   const Speech = {
     voices: [],
+    recorded() { return !!(MS.audio && Object.keys(MS.audio).length); },
+    stop() { try { if (player) player.pause(); } catch (e) { /* ignore */ } try { if (Speech.supported) speechSynthesis.cancel(); } catch (e) { /* ignore */ } },
     supported: 'speechSynthesis' in window,
     refresh() { try { Speech.voices = speechSynthesis.getVoices() || []; } catch (e) { Speech.voices = []; } },
     ja() {
@@ -93,11 +99,11 @@
       return vs.find((v) => /nanami|keita|aoi|daichi|mayu|naoki|shiori/i.test(v.name) && /natural|online/i.test(v.name))
         || vs.find((v) => /kyoko|otoya|o-ren|hattori|google 日本語|haruka|ayumi|ichiro|sayaka/i.test(v.name)) || vs[0] || null;
     },
-    available() { return Speech.supported && !!Speech.ja(); },
+    available() { return Speech.recorded() || (Speech.supported && !!Speech.ja()); },
     explain() {
       dialog(T('No Japanese voice found', 'No se encontró una voz japonesa'),
         h('div', { class: 'prose' },
-          h('p', null, T('Your browser has no Japanese text-to-speech voice, so I cannot play pronunciation. On a Mac, add one:', 'Tu navegador no tiene una voz japonesa, así que no puedo reproducir la pronunciación. En un Mac, agrega una:')),
+          h('p', null, Speech.recorded() ? T('Words and kana from the lessons play from recordings, but text you type needs a Japanese voice in your browser. On a Mac, add one:', 'Las palabras y kana de las lecciones suenan con grabaciones, pero el texto que escribes necesita una voz japonesa en tu navegador. En un Mac, agrega una:') : T('Your browser has no Japanese text-to-speech voice, so I cannot play pronunciation. On a Mac, add one:', 'Tu navegador no tiene una voz japonesa, así que no puedo reproducir la pronunciación. En un Mac, agrega una:')),
           h('ol', null,
             h('li', null, T('Open System Settings › Accessibility › Spoken Content.', 'Abre Ajustes del Sistema › Accesibilidad › Contenido hablado.')),
             h('li', null, T('Click System Voice, then Manage Voices…', 'Haz clic en Voz del sistema y luego en Gestionar voces…')),
@@ -113,6 +119,20 @@
     speak(text, opts) {
       opts = opts || {};
       if (!text) return false;
+      const t = SPEAK_FIX[text] || text;
+      const rate = opts.rate || MS.store.data.settings.rate || 0.85;
+      const src = recording(t) || recording(String(text).replace(/ /g, ''));
+      if (src) {
+        Speech.stop();
+        player = new Audio(src);
+        player.playbackRate = Math.max(0.5, Math.min(1.5, rate / 0.85));
+        player.preservesPitch = true;
+        player.play().catch(() => Speech.speakVoice(t, rate));
+        return true;
+      }
+      return Speech.speakVoice(t, rate);
+    },
+    speakVoice(t, rate) {
       if (!Speech.supported) { Speech.explain(); return false; }
       if (!Speech.voices.length) Speech.refresh();
       const v = Speech.ja();
@@ -121,10 +141,10 @@
         return false;
       }
       try {
-        speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(SPEAK_FIX[text] || text);
+        Speech.stop();
+        const u = new SpeechSynthesisUtterance(t);
         u.lang = 'ja-JP'; u.voice = v;
-        u.rate = opts.rate || MS.store.data.settings.rate || 0.85;
+        u.rate = rate;
         speechSynthesis.speak(u);
         return true;
       } catch (e) { return false; }

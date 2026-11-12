@@ -43,7 +43,7 @@
     return h('div', { class: 'prompt' }, kids);
   }
   function audioNote() {
-    if (!Speech.supported || !Speech.voices.length || !Speech.available()) {
+    if (!Speech.available()) {
       return h('p', { class: 'note bad' }, T('No Japanese voice is installed. ', 'No hay voz japonesa instalada. '), h('button', { class: 'link', type: 'button', onclick: () => Speech.explain() }, T('How to add one', 'Cómo agregarla')));
     }
     return null;
