@@ -90,7 +90,8 @@
     refresh() { try { Speech.voices = speechSynthesis.getVoices() || []; } catch (e) { Speech.voices = []; } },
     ja() {
       const vs = Speech.voices.filter((v) => /^ja/i.test(v.lang));
-      return vs.find((v) => /kyoko|otoya|o-ren|hattori|google 日本語/i.test(v.name)) || vs[0] || null;
+      return vs.find((v) => /nanami|keita|aoi|daichi|mayu|naoki|shiori/i.test(v.name) && /natural|online/i.test(v.name))
+        || vs.find((v) => /kyoko|otoya|o-ren|hattori|google 日本語|haruka|ayumi|ichiro|sayaka/i.test(v.name)) || vs[0] || null;
     },
     available() { return Speech.supported && !!Speech.ja(); },
     explain() {
@@ -102,6 +103,11 @@
             h('li', null, T('Click System Voice, then Manage Voices…', 'Haz clic en Voz del sistema y luego en Gestionar voces…')),
             h('li', null, T('Open Japanese and download a voice (for example Kyoko).', 'Abre Japonés y descarga una voz (por ejemplo Kyoko).')),
             h('li', null, T('Reload this page.', 'Recarga esta página.'))),
+          h('p', null, T('On Windows, the easiest fix is to open this page in Microsoft Edge or Google Chrome, which include free online Japanese voices. Or install one:', 'En Windows, lo más fácil es abrir esta página en Microsoft Edge o Google Chrome, que incluyen voces japonesas en línea gratis. O instala una:')),
+          h('ol', null,
+            h('li', null, T('Open Settings › Time & language › Speech › Manage voices › Add voices.', 'Abre Configuración › Hora e idioma › Voz › Administrar voces › Agregar voces.')),
+            h('li', null, T('Choose Japanese (日本語) and install it.', 'Elige Japonés (日本語) e instálalo.')),
+            h('li', null, T('Close and reopen the browser.', 'Cierra y vuelve a abrir el navegador.'))),
           h('p', { class: 'muted' }, T('On a phone, install a Japanese voice in the system text-to-speech settings.', 'En un teléfono, instala una voz japonesa en los ajustes de texto a voz del sistema.'))));
     },
     speak(text, opts) {

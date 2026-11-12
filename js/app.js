@@ -117,7 +117,7 @@
       quizBox.appendChild(h('p', { class: 'muted' }, T('Spaced days work better than one long night. This plan is a suggestion; follow your teacher’s instructions first.', 'Días espaciados funcionan mejor que una noche larga. Este plan es una sugerencia; sigue primero las instrucciones de tu profesor.')));
     };
 
-    const voiceNote = Speech.supported && Speech.voices.length && Speech.available() ? null : h('p', { class: 'note' }, T('Pronunciation needs a Japanese voice. ', 'La pronunciación necesita una voz japonesa. '), h('button', { class: 'link', type: 'button', onclick: () => Speech.explain() }, T('How to add one on a Mac', 'Cómo agregarla en un Mac')));
+    const voiceNote = Speech.supported && Speech.voices.length && Speech.available() ? null : h('p', { class: 'note' }, T('Pronunciation needs a Japanese voice. ', 'La pronunciación necesita una voz japonesa. '), h('button', { class: 'link', type: 'button', onclick: () => Speech.explain() }, T('How to add one', 'Cómo agregarla')));
 
     const view = h('div', { class: 'page home' },
       h('header', { class: 'home-top' },
