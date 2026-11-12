@@ -112,7 +112,7 @@
   });
 
   /* ================= Generator ================= */
-  const SAMPLE = [['ねこ', 'cat'], ['いぬ', 'dog'], ['さかな', 'fish'], ['ありがとう', 'thank you'], ['コーヒー', 'coffee'], ['ラーメン', 'ramen']].map((x, i) => ({ id: 'w' + i, w: x[0], m: x[1], lesson: 'Sample', ex: '', note: '', hard: false }));
+  const SAMPLE = [['ねこ', 'cat'], ['いぬ', 'dog'], ['さかな', 'fish'], ['ありがとう', 'thank you'], ['コーヒー', 'coffee'], ['ラーメン', 'ramen']].map((x, i) => ({ id: 'w' + i, w: x[0], m: x[1], lesson: 'Sample', ex: '', note: '', hard: false, img: 'pic' + i + '.png' }));
   const KA = P.kanaItemsFor({ scripts: ['hira', 'kata'], groups: ['basic', 'dakuten', 'handakuten', 'yoon'] }, {}, {}, {});
   const DATA = { allWords: SAMPLE, selWords: SAMPLE, kanaItems: KA, kanaAll: KA, srs: {}, lang: 'en' };
   const NON_SPECIAL = P.ACT_ORDER;
@@ -202,8 +202,9 @@
     test('integration: app loads with no errors and every page renders', async () => {
       frame = document.createElement('iframe'); frame.src = 'index.html?seed=demo#/home'; document.getElementById('frame-host').appendChild(frame);
       await new Promise((r) => (frame.onload = r)); fw = frame.contentWindow; fd = frame.contentDocument; await sleep(400);
+      fw.MS.config.english = true;   // English pages are hidden by default; the tests still cover them
       ok(fw.MS && fw.MS.app, 'app global');
-      const routes = ['/home', '/charts', '/charts?k=%E3%81%97', '/rules', '/keyboard', '/vocab', '/practice', '/progress', '/plan', '/resources', '/worksheet', '/en', '/en/plan', '/en/tools?tab=journal', '/en/tools?tab=review', '/en/tools?tab=cloze', '/en/tools?tab=writing', '/en/tools?tab=shadow', '/en/tools?tab=speak', '/en/tools?tab=listen', '/en/tools?tab=weekly', '/en/resources', '/data'];
+      const routes = ['/home', '/charts', '/charts?k=%E3%81%97', '/rules', '/keyboard', '/vocab', '/practice', '/progress', '/plan', '/resources', '/worksheet', '/sets', '/numbers', '/room', '/en', '/en/plan', '/en/tools?tab=journal', '/en/tools?tab=review', '/en/tools?tab=cloze', '/en/tools?tab=writing', '/en/tools?tab=shadow', '/en/tools?tab=speak', '/en/tools?tab=listen', '/en/tools?tab=weekly', '/en/resources', '/data'];
       for (const r of routes) { await go('#' + r); ok($q('#view').children.length > 0, r + ' is empty'); ok(!$q('#view h1') || $q('#view h1').textContent !== 'Something went wrong', r + ' threw: ' + ($q('#view p') || {}).textContent); }
       eq(fw.__errs.join(' | '), '', 'console/page errors');
     });

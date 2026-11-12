@@ -212,13 +212,29 @@
     return { kind: 'match', itemKeys: group.map((w) => 'w:' + w.id), pairs: group.map((w) => ({ key: 'w:' + w.id, w: w.w, m: w.m })), prompt: {}, answer: '', promptText: group.map((w) => w.w).join(' · '), expected: group.map((w) => w.w + ' = ' + w.m).join('; ') };
   });
 
+  // --- pictures (words that have a picture) ---
+  def('r_pic2word', 'recog', 'wordImg', 'Picture → choose the word', 'Imagen → elige la palabra', (it, cx) => {
+    const d = meaningOptions(it, 3, cx);
+    if (d.length < 1) return null;
+    const opts = shuf([{ text: it.w.w, key: it.key, ja: true }].concat(d.map((w) => ({ text: w.w, ja: true }))), cx.rng);
+    return { kind: 'choice', itemKeys: [it.key], prompt: { img: it.w.img }, options: opts, answerIndex: opts.findIndex((o) => o.key === it.key), promptText: it.w.m, expected: it.w.w, speak: it.w.w };
+  });
+  def('r_word2pic', 'recog', 'wordImg', 'Word → choose the picture', 'Palabra → elige la imagen', (it, cx) => {
+    const mine = normMeaning(it.w.m), seen = new Set([mine, it.w.img]);
+    const d = [];
+    shuf(cx.words, cx.rng).forEach((w) => { const m = normMeaning(w.m); if (d.length < 3 && w.img && w.id !== it.w.id && !seen.has(m) && !seen.has(w.img)) { seen.add(m); seen.add(w.img); d.push(w); } });
+    if (d.length < 1) return null;
+    const opts = shuf([{ img: it.w.img, text: it.w.m, key: it.key }].concat(d.map((w) => ({ img: w.img, text: w.m }))), cx.rng);
+    return { kind: 'choice', itemKeys: [it.key], prompt: { word: it.w.w, audio: it.w.w, speakable: true }, options: opts, answerIndex: opts.findIndex((o) => o.key === it.key), promptText: it.w.w, expected: it.w.m, speak: it.w.w };
+  });
+
   function T2(en, es) { return (MS.ui && MS.ui.T) ? MS.ui.T(en, es) : en; }
 
-  const ACT_ORDER = ['w_meaning', 'w_audio', 'w_blank', 'w_scramble', 'w_hand', 'k_stroke', 'k_sound2kana', 'k_kana2sound', 'k_convert', 'k_lookalike', 'k_voicing', 'k_speed', 'r_word2meaning', 'r_meaning2word', 'r_audio2meaning', 'r_flash', 'r_match'];
+  const ACT_ORDER = ['w_meaning', 'w_audio', 'w_blank', 'w_scramble', 'w_hand', 'k_stroke', 'k_sound2kana', 'k_kana2sound', 'k_convert', 'k_lookalike', 'k_voicing', 'k_speed', 'r_word2meaning', 'r_meaning2word', 'r_audio2meaning', 'r_pic2word', 'r_word2pic', 'r_flash', 'r_match'];
   const PRESETS = {
     write: ['w_meaning', 'w_audio', 'w_blank', 'w_scramble', 'w_hand'],
     kana: ['k_stroke', 'k_sound2kana', 'k_kana2sound', 'k_convert', 'k_lookalike', 'k_voicing'],
-    recog: ['r_word2meaning', 'r_meaning2word', 'r_audio2meaning', 'r_flash', 'r_match'],
+    recog: ['r_word2meaning', 'r_meaning2word', 'r_audio2meaning', 'r_pic2word', 'r_word2pic', 'r_flash', 'r_match'],
     all: ACT_ORDER.filter((a) => a !== 'k_speed'),
     daily: ['k_sound2kana', 'k_kana2sound', 'k_convert', 'k_lookalike', 'w_meaning', 'w_audio', 'r_word2meaning', 'r_meaning2word', 'r_flash'],
   };
@@ -249,6 +265,7 @@
     const pools = {
       wordK: wordItems.filter((i) => kanaOnlyWord(i.w)),
       word: wordItems,
+      wordImg: wordItems.filter((i) => i.w.img),
       kana: kanaItems,
       any: wordItems.concat(kanaItems),
     };

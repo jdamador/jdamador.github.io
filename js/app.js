@@ -14,7 +14,9 @@
       { id: 'rules', path: '/rules', en: 'Rules', es: 'Reglas' },
       { id: 'keyboard', path: '/keyboard', en: 'Kana keyboard', es: 'Teclado de kana' },
       { id: 'vocab', path: '/vocab', en: 'Words', es: 'Palabras' },
-      { id: 'shared', path: '/shared', en: 'Shared words', es: 'Palabras compartidas' },
+      { id: 'sets', path: '/sets', en: 'Vocabulary sets', es: 'Conjuntos de vocabulario' },
+      { id: 'numbers', path: '/numbers', en: 'Numbers', es: 'Números' },
+      { id: 'shared', path: '/room', en: 'Study room', es: 'Sala de estudio' },
       { id: 'practice', path: '/practice', en: 'Practice', es: 'Práctica' },
       { id: 'progress', path: '/progress', en: 'Progress', es: 'Progreso' },
       { id: 'plan', path: '/plan', en: 'Study plan', es: 'Plan de estudio' },
@@ -29,6 +31,7 @@
     { group: { en: 'This site', es: 'Este sitio' }, items: [{ id: 'data', path: '/data', en: 'Data and help', es: 'Datos y ayuda' }] },
   ];
   /* English sections are hidden unless MS.config.english is on (see js/config.js). */
+  let viewSubs = [];   // unsubscribe functions for the current view (cleared on every route change)
   const englishOn = () => !!(MS.config && MS.config.english);
   const navGroups = () => NAV.filter((g) => englishOn() || g.group.en !== 'English');
 
@@ -269,7 +272,7 @@
   }
   function vocab(host, query) {
     const d = D();
-    const st = { id: null, w: query.w ? decodeURIComponent(query.w) : '', m: '', lesson: '', ex: '', note: '', target: 'w' };
+    const st = { id: null, w: query.w ? decodeURIComponent(query.w) : '', m: '', lesson: '', ex: '', note: '', img: '', target: 'w' };
     const f = { q: query.q ? decodeURIComponent(query.q) : '', lesson: '', script: '', hard: false, sort: 'new' };
     const badge = h('span', { class: 'badge' });
     const warn = h('p', { class: 'note bad', hidden: true });
@@ -291,25 +294,27 @@
     const meaning = h('input', { type: 'text', placeholder: T('Meaning in Spanish or English', 'Significado en español o inglés'), 'aria-label': T('Meaning', 'Significado'), oninput: (e) => (st.m = e.target.value) });
     const lessonIn = h('input', { type: 'text', list: 'lessons', placeholder: T('e.g. Lesson 3, Food', 'ej. Lección 3, Comida'), 'aria-label': T('Lesson or tag', 'Lección o etiqueta'), oninput: (e) => (st.lesson = e.target.value) });
     const noteIn = h('input', { type: 'text', placeholder: T('Note (optional)', 'Nota (opcional)'), 'aria-label': T('Note', 'Nota'), oninput: (e) => (st.note = e.target.value) });
+    const pic = MS.images.picker({ getQuery: () => meaning.value, onChange: (v) => (st.img = v) });
     const dl = h('datalist', { id: 'lessons' });
     const refreshLessons = () => { clear(dl); uniq(d.words.map((w) => w.lesson).filter(Boolean)).forEach((l) => dl.appendChild(h('option', { value: l }))); };
     const saveBtn = h('button', { class: 'btn primary', type: 'submit' }, T('Add word', 'Agregar palabra'));
     const cancelBtn = h('button', { class: 'btn ghost', type: 'button', hidden: true, onclick: () => resetForm() }, T('Cancel edit', 'Cancelar edición'));
     function resetForm(keepLesson) {
       const lesson = keepLesson ? st.lesson : '';
-      Object.assign(st, { id: null, w: '', m: '', lesson, ex: '', note: '', target: 'w' });
+      Object.assign(st, { id: null, w: '', m: '', lesson, ex: '', note: '', img: '', target: 'w' });
+      pic.set(''); pic.close();
       meaning.value = ''; noteIn.value = ''; lessonIn.value = lesson; kbd.setValue(''); saveBtn.textContent = T('Add word', 'Agregar palabra'); cancelBtn.hidden = true; syncPrev();
     }
     function submit(ev) {
       ev.preventDefault();
       if (!st.w.trim()) { toast(T('Type the word with the keyboard first.', 'Primero escribe la palabra con el teclado.')); kbd.focus(); return; }
       if (!st.m.trim()) { toast(T('Add the meaning.', 'Agrega el significado.')); meaning.focus(); return; }
-      const rec = { w: st.w.trim(), m: st.m.trim(), lesson: st.lesson.trim(), ex: st.ex.trim(), note: st.note.trim() };
+      const rec = { w: st.w.trim(), m: st.m.trim(), lesson: st.lesson.trim(), ex: st.ex.trim(), note: st.note.trim(), img: st.img || '', edited: Date.now() };
       if (st.id) Object.assign(d.words.find((x) => x.id === st.id), rec);
       else {
         const dup = d.words.find((x) => x.w === rec.w);
         if (dup && !confirm(T('“' + rec.w + '” is already in your list (' + dup.m + '). Add it anyway?', '“' + rec.w + '” ya está en tu lista (' + dup.m + '). ¿Agregarla de todos modos?'))) return;
-        d.words.unshift(Object.assign({ id: MS.store.uid(), hard: false, added: Date.now() }, rec));
+        d.words.unshift(Object.assign({ id: MS.store.uid(), hard: false, added: Date.now(), by: (d.shared && d.shared.name) || '' }, rec));
       }
       save(); toast(st.id ? T('Saved.', 'Guardado.') : T('Added.', 'Agregada.')); resetForm(true); refreshLessons(); drawList(); kbd.focus();
     }
@@ -367,19 +372,31 @@
       listBox.appendChild(h('ul', { class: 'wlist' }, items.map((w) => {
         const sc = K.scriptCheck(w.w);
         return h('li', { class: w.hard ? 'hard' : '' },
-          speakBtn(w.w), h('span', { class: 'w-ja', lang: 'ja' }, w.w),
-          h('span', { class: 'w-m' }, w.m, w.ex ? h('small', { lang: 'ja' }, w.ex) : null, w.note ? h('small', null, w.note) : null),
+          speakBtn(w.w), h('span', { class: 'w-ja', lang: 'ja' }, w.img ? h('img', { class: 'w-img', src: w.img, alt: '', loading: 'lazy' }) : null, w.w),
+          h('span', { class: 'w-m' }, w.m, w.ex ? h('small', { lang: 'ja' }, w.ex) : null, w.note ? h('small', null, w.note) : null, w.sh && w.by ? h('small', null, T('Shared by ', 'Compartida por ') + w.by) : null),
           h('span', { class: 'w-tags' }, w.lesson ? h('span', { class: 'tag' }, w.lesson) : null, h('span', { class: 'badge' + (sc.other.length ? ' warn' : '') }, sc.other.length ? T('has non-kana', 'tiene no-kana') : scriptName(sc.script))),
           h('span', { class: 'w-act' },
             h('button', { class: 'btn ghost sm' + (w.hard ? ' on' : ''), type: 'button', 'aria-pressed': !!w.hard, 'aria-label': T('Difficult', 'Difícil'), title: T('Mark as difficult', 'Marcar como difícil'), onclick: () => { w.hard = !w.hard; save(); drawList(); } }, '★'),
-            h('button', { class: 'btn ghost sm', type: 'button', 'aria-label': T('Edit ', 'Editar ') + w.w, onclick: () => { Object.assign(st, { id: w.id, w: w.w, m: w.m, lesson: w.lesson || '', ex: w.ex || '', note: w.note || '', target: 'w' }); meaning.value = w.m; lessonIn.value = w.lesson || ''; noteIn.value = w.note || ''; kbd.setValue(w.w); saveBtn.textContent = T('Save changes', 'Guardar cambios'); cancelBtn.hidden = false; syncPrev(); form.scrollIntoView({ behavior: 'auto' }); } }, icon('edit')),
-            h('button', { class: 'btn ghost sm', type: 'button', 'aria-label': T('Delete ', 'Borrar ') + w.w, onclick: () => U.confirmDlg(T('Delete this word?', '¿Borrar esta palabra?'), w.w + ' — ' + w.m, T('Delete', 'Borrar'), () => { d.words = d.words.filter((x) => x.id !== w.id); delete d.srs['w:' + w.id]; delete d.mistakes['w:' + w.id]; save(); drawList(); refreshLessons(); }) }, icon('trash'))));
+            h('button', { class: 'btn ghost sm', type: 'button', 'aria-label': T('Edit ', 'Editar ') + w.w, onclick: () => { Object.assign(st, { id: w.id, w: w.w, m: w.m, lesson: w.lesson || '', ex: w.ex || '', note: w.note || '', img: w.img || '', target: 'w' }); pic.set(w.img || ''); meaning.value = w.m; lessonIn.value = w.lesson || ''; noteIn.value = w.note || ''; kbd.setValue(w.w); saveBtn.textContent = T('Save changes', 'Guardar cambios'); cancelBtn.hidden = false; syncPrev(); form.scrollIntoView({ behavior: 'auto' }); } }, icon('edit')),
+            h('button', { class: 'btn ghost sm', type: 'button', 'aria-label': T('Delete ', 'Borrar ') + w.w, onclick: () => U.confirmDlg(T('Delete this word?', '¿Borrar esta palabra?'), w.w + ' — ' + w.m, T('Delete', 'Borrar'), () => { MS.shared.deleted(w); d.words = d.words.filter((x) => x.id !== w.id); delete d.srs['w:' + w.id]; delete d.mistakes['w:' + w.id]; save(); drawList(); refreshLessons(); }) }, icon('trash'))));
       })));
     }
 
     const form = h('form', { class: 'wform', onsubmit: submit },
       h('div', { class: 'wf-fields' }, wordPrev, exPrev), h('div', { class: 'row' }, badge), warn, kbd.el,
-      h('div', { class: 'wf-inputs' }, meaning, lessonIn, noteIn), dl, h('div', { class: 'row actions' }, saveBtn, cancelBtn));
+      h('div', { class: 'wf-inputs' }, meaning, lessonIn, noteIn), h('div', { class: 'field' }, h('span', { class: 'field-l' }, T('Picture (optional)', 'Imagen (opcional)')), pic.el), dl, h('div', { class: 'row actions' }, saveBtn, cancelBtn));
+    // Fill in a picture for every word that has none, using the first search result.
+    async function autoPictures(btn) {
+      const todo = d.words.filter((w) => !w.img && w.m);
+      if (!todo.length) { toast(T('Every word already has a picture.', 'Todas las palabras ya tienen imagen.')); return; }
+      btn.disabled = true; let n = 0;
+      for (const w of todo) {
+        btn.textContent = T('Finding pictures… ', 'Buscando imágenes… ') + (n + 1) + '/' + todo.length;
+        try { const r = await MS.images.search(w.m, 1); if (r[0]) { w.img = r[0]; w.edited = Date.now(); n++; } } catch (e) { toast(T('Picture search stopped: check your connection.', 'La búsqueda se detuvo: revisa tu conexión.')); break; }
+      }
+      save(); btn.disabled = false; btn.textContent = T('Find pictures for words without one', 'Buscar imágenes para palabras sin imagen');
+      toast(T(n + ' pictures added. Edit a word to choose a different one.', n + ' imágenes agregadas. Edita una palabra para elegir otra.')); drawList();
+    }
     const searchIn = h('input', { type: 'search', value: f.q, placeholder: T('Search words or meanings', 'Buscar palabras o significados'), 'aria-label': T('Search words', 'Buscar palabras'), oninput: (e) => { f.q = e.target.value; drawList(); } });
     host.replaceChildren(h('div', { class: 'page' },
       h('header', { class: 'page-head' }, h('h1', null, T('Words', 'Palabras')), h('p', { class: 'lead' }, T('Your class vocabulary. Type with the kana keyboard, group by lesson, and practise from the Practice page.', 'El vocabulario de tu clase. Escribe con el teclado de kana, agrupa por lección y practica desde la página Práctica.'))),
@@ -387,11 +404,14 @@
       h('details', { class: 'paste' }, h('summary', null, T('Paste a list', 'Pegar una lista')),
         h('p', { class: 'muted' }, T('One word per line: word, meaning. Duplicates are skipped and non-kana characters are flagged.', 'Una palabra por línea: palabra, significado. Las duplicadas se omiten y los caracteres que no son kana se señalan.')), paste,
         h('div', { class: 'row wrap' }, pasteLesson, h('label', { class: 'check sm' }, conv, T('Convert romaji words to kana', 'Convertir palabras en romaji a kana')), h('button', { class: 'btn', type: 'button', onclick: doPreview }, T('Preview', 'Vista previa'))), preview),
-      h('section', null, h('div', { class: 'row between wrap' }, h('h2', null, T('Your words', 'Tus palabras'), ' ', countEl), h('div', { class: 'row wrap' }, searchIn, lessonFilter,
+      h('section', null, h('div', { class: 'row between wrap' }, h('h2', null, T('Your words', 'Tus palabras'), ' ', countEl),
+        h('button', { class: 'btn ghost sm', type: 'button', onclick: (e) => autoPictures(e.currentTarget) }, T('Find pictures for words without one', 'Buscar imágenes para palabras sin imagen'))),
+        h('div', { class: 'row between wrap' }, h('div', { class: 'row wrap' }, searchIn, lessonFilter,
         h('select', { 'aria-label': T('Script filter', 'Filtro de escritura'), onchange: (e) => { f.script = e.target.value; drawList(); } }, [['', T('Any script', 'Cualquier escritura')], ['hira', T('Hiragana', 'Hiragana')], ['kata', T('Katakana', 'Katakana')], ['mixed', T('Mixed', 'Mixto')]].map(([v, l]) => h('option', { value: v }, l))),
         h('label', { class: 'check sm' }, h('input', { type: 'checkbox', onchange: (e) => { f.hard = e.target.checked; drawList(); } }), T('Difficult only', 'Solo difíciles')),
         h('label', { class: 'check sm' }, h('input', { type: 'checkbox', onchange: (e) => { f.sort = e.target.checked ? 'az' : 'new'; drawList(); } }), T('Sort あ→ん', 'Ordenar あ→ん')))), listBox)));
     refreshLessons(); syncPrev(); drawList();
+    viewSubs.push(MS.shared.listen(() => { refreshLessons(); drawList(); }));
     if (st.w) { kbd.setValue(st.w); st.w = kbd.getValue(); syncPrev(); }
     if (query.w) setTimeout(() => meaning.focus(), 50);
   }
@@ -604,7 +624,8 @@
     '/keyboard': { nav: 'keyboard', title: ['Kana keyboard', 'Teclado de kana'], f: keyboardPage }, '/vocab': { nav: 'vocab', title: ['Words', 'Palabras'], f: vocab },
     '/practice': { nav: 'practice', title: ['Practice', 'Práctica'], f: (host) => MS.session.hub(host) }, '/practice/run': { nav: 'practice', title: ['Practice session', 'Sesión de práctica'], f: (host) => MS.session.renderRun(host) },
     '/progress': { nav: 'progress', title: ['Progress', 'Progreso'], f: progress }, '/plan': { nav: 'plan', title: ['Study plan', 'Plan de estudio'], f: plan }, '/resources': { nav: 'resources', title: ['Resources', 'Recursos'], f: resourcesJp },
-    '/shared': { nav: 'shared', title: ['Shared words', 'Palabras compartidas'], f: (host) => MS.shared.page(host) },
+    '/room': { nav: 'shared', title: ['Study room', 'Sala de estudio'], f: (host) => MS.shared.page(host) }, '/shared': { nav: 'shared', title: ['Study room', 'Sala de estudio'], f: (host) => MS.shared.page(host) },
+    '/sets': { nav: 'sets', title: ['Vocabulary sets', 'Conjuntos de vocabulario'], f: (host) => MS.topics.sets(host) }, '/numbers': { nav: 'numbers', title: ['Numbers', 'Números'], f: (host) => MS.topics.numbers(host) },
     '/worksheet': { nav: 'practice', title: ['Printable worksheet', 'Hoja imprimible'], f: worksheet },
     '/en': { nav: 'en', title: ['English: level and goals', 'Inglés: nivel y metas'], f: (host) => MS.english.assess(host) }, '/en/plan': { nav: 'enplan', title: ['English: weekly plan', 'Inglés: plan semanal'], f: (host) => MS.english.plan(host) },
     '/en/tools': { nav: 'entools', title: ['English tools', 'Herramientas de inglés'], f: (host, q) => MS.english.tools(host, q.tab) }, '/en/resources': { nav: 'enres', title: ['English resources', 'Recursos de inglés'], f: (host) => MS.english.resources(host) },
@@ -619,6 +640,7 @@
   let lastKey = '';
   function route() {
     MS.session.cleanup(); MS.english.cleanup(); MS.shared.cleanup();
+    viewSubs.forEach((f) => f()); viewSubs = [];
     const { path, query } = parseHash();
     const r = (!englishOn() && /^\/en(\/|$)/.test(path) ? null : ROUTES[path]) || ROUTES['/home'];
     currentNav = r.nav;

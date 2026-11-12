@@ -34,6 +34,7 @@
   function promptBlock(p, api) {
     const kids = [];
     if (p.task) kids.push(h('p', { class: 'q-task' }, p.task === 'hira' ? T('Write it in hiragana.', 'Escríbelo en hiragana.') : p.task === 'kata' ? T('Write it in katakana.', 'Escríbelo en katakana.') : ''));
+    if (p.img) kids.push(h('img', { class: 'q-img', src: p.img, alt: T('Picture', 'Imagen') }));
     if (p.meaning) kids.push(h('p', { class: 'q-meaning' }, p.meaning));
     if (p.pattern) kids.push(h('p', { class: 'q-pattern', lang: 'ja' }, p.pattern));
     if (p.word) kids.push(h('p', { class: 'q-big', lang: 'ja' }, p.word));
@@ -96,8 +97,8 @@
     const list = h('div', { class: 'opts', role: 'group', 'aria-label': T('Answers', 'Respuestas') });
     let done = false;
     q.options.forEach((o, i) => {
-      const b = h('button', { type: 'button', class: 'opt' + (o.ja ? ' ja' : ''), lang: o.ja ? 'ja' : null, onclick: () => pick(i) },
-        h('span', { class: 'num', 'aria-hidden': 'true' }, String(i + 1)), h('span', { class: 'opt-text' }, o.text), o.sub ? h('span', { class: 'opt-sub' }, o.sub) : null);
+      const b = h('button', { type: 'button', class: 'opt' + (o.ja ? ' ja' : '') + (o.img ? ' pic' : ''), lang: o.ja ? 'ja' : null, 'aria-label': o.img ? String(i + 1) : null, onclick: () => pick(i) },
+        h('span', { class: 'num', 'aria-hidden': 'true' }, String(i + 1)), o.img ? h('img', { src: o.img, alt: '' }) : h('span', { class: 'opt-text' }, o.text), o.sub ? h('span', { class: 'opt-sub' }, o.sub) : null);
       btns.push(b); list.appendChild(b);
     });
     box.appendChild(list);

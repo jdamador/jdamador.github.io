@@ -4,7 +4,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const root = path.join(__dirname, '..');
 const ctx = { console }; ctx.window = ctx; vm.createContext(ctx);
-for (const f of ['js/kana-data.js', 'data/content.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
+for (const f of ['js/kana-data.js', 'data/content.js', 'data/vocab-sets.js', 'js/topics.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
 
 // Must match SPEAK_FIX in js/ui.js: the app speaks the mapped text, so we record that.
 const ui = fs.readFileSync(path.join(root, 'js/ui.js'), 'utf8');
@@ -18,7 +18,8 @@ const add = (s) => { s = s.replace(/ /g, ''); if (!s) return; out.add(SPEAK_FIX[
   if (typeof v === 'string') { const t = v.trim(); if (JA.test(t) && HAS_JA.test(t)) add(t); return; }
   if (!v || typeof v !== 'object' || seen.has(v)) return; seen.add(v);
   for (const k of Object.keys(v)) { if (/^(en|es|title|body|note|q|url)$/.test(k) && typeof v[k] === 'string') continue; walk(v[k]); }
-})({ kana: ctx.MS.kana, content: ctx.MS.content });
+})({ kana: ctx.MS.kana, content: ctx.MS.content, sets: ctx.MS.vocabSets });
+ctx.MS.numbers.audioList().forEach(add);
 // The sample words in js/session.js.
 const ses = fs.readFileSync(path.join(root, 'js/session.js'), 'utf8').match(/const SAMPLE_WORDS = (\[[\s\S]*?\]);/);
 if (ses) vm.runInNewContext(ses[1]).forEach((w) => add(w[0]));
