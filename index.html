@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Masume</title>
+  <script>window.__errs = []; addEventListener('error', function (e) { __errs.push(e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno); }); addEventListener('unhandledrejection', function (e) { __errs.push('promise: ' + e.reason); }); (function (c) { console.error = function () { __errs.push('console.error: ' + Array.prototype.join.call(arguments, ' ')); c.apply(console, arguments); }; })(console.error);</script>
+  <meta name="description" content="Masume: a personal study desk for introductory Japanese and for English at C1/C2.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='3' fill='%231F7A5C'/%3E%3Cpath d='M16 4v24M4 16h24' stroke='%23fff' stroke-opacity='.45' stroke-dasharray='2 2'/%3E%3C/svg%3E">
+  <!-- Optional web fonts. Offline, the fallbacks in styles.css take over (macOS ships Hiragino and Klee). -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Klee+One:wght@400;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#view">Skip to content</a>
+  <div class="app">
+    <aside class="rail" id="rail">
+      <a class="brand" href="#/home" aria-label="Masume">
+        <span class="brand-mark" aria-hidden="true"><span lang="ja">あ</span></span>
+        <span class="brand-text"><strong>Masume</strong><small id="brand-sub">Japanese and English study desk</small></span>
+      </a>
+      <nav id="nav" aria-label="Main"></nav>
+    </aside>
+    <div class="scrim" id="scrim"></div>
+    <div class="main-col">
+      <header class="topbar">
+        <button class="btn ghost round" id="menu-btn" type="button" aria-controls="rail" aria-expanded="false" aria-label="Menu">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+        </button>
+        <div class="search">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></svg></span>
+          <input id="search" type="search" autocomplete="off" placeholder="Search" aria-label="Search" aria-controls="search-results">
+          <div id="search-results" class="results" hidden></div>
+        </div>
+        <div class="controls" id="controls"></div>
+      </header>
+      <main id="view" tabindex="-1"></main>
+    </div>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <dialog id="dlg"></dialog>
+  <noscript><p style="padding:2rem">Masume needs JavaScript. It has no server and no build step.</p></noscript>
+
+  <script src="js/store.js"></script>
+  <script src="js/kana-data.js"></script>
+  <script src="js/srs.js"></script>
+  <script src="data/strokes.js"></script>
+  <script src="data/content.js"></script>
+  <script src="data/english-data.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/keyboard.js"></script>
+  <script src="js/practice.js"></script>
+  <script src="js/session.js"></script>
+  <script src="js/english.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

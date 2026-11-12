@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Masume tests</title>
+  <style>
+    body { font: 16px/1.5 system-ui, "Hiragino Sans", sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; }
+    h1 { margin-bottom: 4px; } #summary.ok { color: #14753f; } #summary.bad { color: #b3263e; }
+    ul { list-style: none; padding: 0; } li { padding: 3px 0; border-bottom: 1px solid #ddd; font-size: 14px; }
+    li.pass::before { content: "✓ "; color: #14753f; } li.fail::before { content: "✗ "; color: #b3263e; font-weight: 700; } li.fail { background: #fdeef0; }
+    code { background: #eee; padding: 0 4px; } iframe { width: 1100px; height: 800px; border: 1px solid #aaa; }
+    details { margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <h1>Masume tests</h1>
+  <p>Open this page over <code>python3 -m http.server</code> (the integration part loads the app in a frame). Unit checks run first.</p>
+  <h2 id="summary">Running…</h2>
+  <ul id="results"></ul>
+  <details><summary>App frame (integration tests)</summary><div id="frame-host"></div></details>
+  <script src="js/store.js"></script>
+  <script src="js/kana-data.js"></script>
+  <script src="js/srs.js"></script>
+  <script src="js/practice.js"></script>
+  <script src="js/tests.js"></script>
+</body>
+</html>
