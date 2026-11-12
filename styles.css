@@ -403,6 +403,8 @@ dialog::backdrop { background: rgba(10, 20, 16, .55); }
 .ws-row { display: grid; grid-template-columns: repeat(var(--n), 1fr); container-type: inline-size; margin-bottom: 6px; }
 .ws-cell { aspect-ratio: 1; display: grid; place-items: center; border: 1px solid #5a8c78; margin-left: -1px; background-color: #fff; font: 400 28px/1 var(--f-kana); font-size: calc(100cqw / var(--n) * .66); --grid-strong: #a9cdbd; }
 .ws-cell.model { color: #111; } .ws-cell.faint { color: #111; opacity: .2; }
+.ws-row.ws-last { margin-bottom: 16px; }
+pre.code { overflow-x: auto; padding: 12px 14px; border: 1.5px solid var(--grid-strong); border-radius: 8px; background: var(--sheet); font-size: .8rem; line-height: 1.45; white-space: pre; }
 .no-print { }
 
 /* ---------- Responsive ---------- */

@@ -14,6 +14,7 @@
       { id: 'rules', path: '/rules', en: 'Rules', es: 'Reglas' },
       { id: 'keyboard', path: '/keyboard', en: 'Kana keyboard', es: 'Teclado de kana' },
       { id: 'vocab', path: '/vocab', en: 'Words', es: 'Palabras' },
+      { id: 'shared', path: '/shared', en: 'Shared words', es: 'Palabras compartidas' },
       { id: 'practice', path: '/practice', en: 'Practice', es: 'Práctica' },
       { id: 'progress', path: '/progress', en: 'Progress', es: 'Progreso' },
       { id: 'plan', path: '/plan', en: 'Study plan', es: 'Plan de estudio' },
@@ -27,7 +28,9 @@
     ] },
     { group: { en: 'This site', es: 'Este sitio' }, items: [{ id: 'data', path: '/data', en: 'Data and help', es: 'Datos y ayuda' }] },
   ];
-  const ALL_NAV = NAV.flatMap((g) => g.items);
+  /* English sections are hidden unless MS.config.english is on (see js/config.js). */
+  const englishOn = () => !!(MS.config && MS.config.english);
+  const navGroups = () => NAV.filter((g) => englishOn() || g.group.en !== 'English');
 
   /* ---------- helpers ---------- */
   const isKataCh = (c) => K.isKata(c[0]);
@@ -460,6 +463,8 @@
   function worksheet(host, query) {
     const d = D();
     const prefs = d.worksheet || (d.worksheet = { mode: 'kana', scripts: ['hira'], groups: ['basic'], sets: ['all'], cols: 10, faint: 2 });
+    if (!prefs.reps) prefs.reps = 1;
+    if (!prefs.blankRows) prefs.blankRows = 15;
     const sheet = h('div', { class: 'sheet', id: 'sheet' });
     let custom = query.k ? decodeURIComponent(query.k) : '';
     function rowsOf() {
@@ -470,17 +475,29 @@
     }
     function drawSheet() {
       clear(sheet);
-      const items = rowsOf();
       sheet.appendChild(h('div', { class: 'sheet-head' }, h('span', null, T('Name', 'Nombre') + ' ____________________'), h('span', null, T('Date', 'Fecha') + ' ____________'), h('span', { class: 'sheet-title' }, T('Writing practice', 'Práctica de escritura'))));
+      if (prefs.mode === 'blank' && !custom) {
+        for (let r = 0; r < prefs.blankRows; r++) {
+          const row = h('div', { class: 'ws-row', style: { '--n': prefs.cols } });
+          for (let c = 0; c < prefs.cols; c++) row.appendChild(h('span', { class: 'ws-cell' }));
+          sheet.appendChild(row);
+        }
+        return;
+      }
+      const items = rowsOf();
       if (!items.length) { sheet.appendChild(h('p', { class: 'muted' }, T('Nothing to print yet. Choose kana, or add words first.', 'Aún no hay nada para imprimir. Elige kana o agrega palabras primero.'))); return; }
+      // Each sound/word gets prefs.reps rows. The first row has the faint tracing copies;
+      // extra rows show the model once and leave the rest empty.
       items.forEach((t) => {
         const chars = [...t]; const cols = Math.max(prefs.cols, chars.length * 2 + 1);
-        const row = h('div', { class: 'ws-row', style: { '--n': cols } });
-        let n = 0;
-        chars.forEach((c) => { row.appendChild(h('span', { class: 'ws-cell model', lang: 'ja' }, c)); n++; });
-        for (let r = 0; r < prefs.faint; r++) chars.forEach((c) => { if (n < cols) { row.appendChild(h('span', { class: 'ws-cell faint', lang: 'ja' }, c)); n++; } });
-        while (n < cols) { row.appendChild(h('span', { class: 'ws-cell' })); n++; }
-        sheet.appendChild(row);
+        for (let rep = 0; rep < prefs.reps; rep++) {
+          const row = h('div', { class: 'ws-row' + (prefs.reps > 1 && rep === prefs.reps - 1 ? ' ws-last' : ''), style: { '--n': cols } });
+          let n = 0;
+          chars.forEach((c) => { row.appendChild(h('span', { class: 'ws-cell model', lang: 'ja' }, c)); n++; });
+          if (rep === 0) for (let r = 0; r < prefs.faint; r++) chars.forEach((c) => { if (n < cols) { row.appendChild(h('span', { class: 'ws-cell faint', lang: 'ja' }, c)); n++; } });
+          while (n < cols) { row.appendChild(h('span', { class: 'ws-cell' })); n++; }
+          sheet.appendChild(row);
+        }
       });
     }
     const chk = (label, checked, on) => h('label', { class: 'chip' }, h('input', { type: 'checkbox', checked, onchange: (e) => on(e.target.checked) }), h('span', null, label));
@@ -489,13 +506,16 @@
     const controls = h('div', { class: 'ws-controls no-print' },
       h('fieldset', { class: 'fs' }, h('legend', null, T('What to print', 'Qué imprimir')), h('div', { class: 'chips' },
         h('label', { class: 'chip' }, h('input', { type: 'radio', name: 'wm', checked: prefs.mode === 'kana', onchange: () => { prefs.mode = 'kana'; custom = ''; save(); drawSheet(); } }), h('span', null, T('Kana', 'Kana'))),
-        h('label', { class: 'chip' }, h('input', { type: 'radio', name: 'wm', checked: prefs.mode === 'words', onchange: () => { prefs.mode = 'words'; custom = ''; save(); drawSheet(); } }), h('span', null, T('My words', 'Mis palabras'))))),
+        h('label', { class: 'chip' }, h('input', { type: 'radio', name: 'wm', checked: prefs.mode === 'words', onchange: () => { prefs.mode = 'words'; custom = ''; save(); drawSheet(); } }), h('span', null, T('My words', 'Mis palabras'))),
+        h('label', { class: 'chip' }, h('input', { type: 'radio', name: 'wm', checked: prefs.mode === 'blank', onchange: () => { prefs.mode = 'blank'; custom = ''; save(); drawSheet(); } }), h('span', null, T('Blank sheet', 'Hoja en blanco'))))),
       h('fieldset', { class: 'fs' }, h('legend', null, T('Kana', 'Kana')), h('div', { class: 'chips' },
         chk('ひらがな', prefs.scripts.includes('hira'), (on) => tog(prefs.scripts, 'hira', on)), chk('カタカナ', prefs.scripts.includes('kata'), (on) => tog(prefs.scripts, 'kata', on)),
         [['basic', T('Basic 46', 'Básicos 46')], ['dakuten', T('Dakuten', 'Dakuten')], ['handakuten', T('Handakuten', 'Handakuten')], ['small', T('Small', 'Pequeños')], ['yoon', T('Yōon', 'Yōon')]].map(([g, l]) => chk(l, prefs.groups.includes(g), (on) => tog(prefs.groups, g, on))))),
       h('fieldset', { class: 'fs' }, h('legend', null, T('Word sets', 'Conjuntos de palabras')), h('div', { class: 'chips' }, [['all', T('All words', 'Todas')], ['hard', T('Difficult', 'Difíciles')], ['mistakes', T('Mistake bank', 'Errores')]].concat(lessons.map((l) => ['lesson:' + l, l || T('No lesson', 'Sin lección')])).map(([v, l]) => chk(l, prefs.sets.includes(v), (on) => tog(prefs.sets, v, on))))),
       h('div', { class: 'row wrap' }, h('label', { class: 'inline' }, T('Boxes per row ', 'Cajas por fila '), h('select', { onchange: (e) => { prefs.cols = +e.target.value; save(); drawSheet(); } }, [8, 10, 12].map((n) => h('option', { value: n, selected: prefs.cols === n }, n)))),
         h('label', { class: 'inline' }, T('Faint copies ', 'Copias tenues '), h('select', { onchange: (e) => { prefs.faint = +e.target.value; save(); drawSheet(); } }, [0, 1, 2, 3].map((n) => h('option', { value: n, selected: prefs.faint === n }, n)))),
+        h('label', { class: 'inline' }, T('Rows per sound ', 'Filas por sonido '), h('select', { onchange: (e) => { prefs.reps = +e.target.value; save(); drawSheet(); } }, [1, 2, 3, 4, 5, 6].map((n) => h('option', { value: n, selected: prefs.reps === n }, n)))),
+        h('label', { class: 'inline' }, T('Blank sheet rows ', 'Filas de la hoja en blanco '), h('select', { onchange: (e) => { prefs.blankRows = +e.target.value; save(); drawSheet(); } }, [5, 10, 12, 15, 20, 25, 30].map((n) => h('option', { value: n, selected: prefs.blankRows === n }, n)))),
         h('button', { class: 'btn primary', type: 'button', onclick: () => window.print() }, T('Print', 'Imprimir'))),
       custom ? h('p', { class: 'note' }, T('Showing only: ', 'Mostrando solo: ') + custom + ' ', h('a', { href: '#/worksheet' }, T('show my selection', 'mostrar mi selección'))) : null);
     clear(host).appendChild(h('div', { class: 'page wide' }, h('header', { class: 'page-head no-print' }, h('h1', null, T('Printable worksheet', 'Hoja imprimible')), h('p', { class: 'lead' }, T('Genkouyoushi-style squares with a model character, faint copies and empty boxes. Print or save as PDF from the print dialog.', 'Cuadros estilo genkouyoushi con un carácter modelo, copias tenues y cajas vacías. Imprime o guarda como PDF desde el diálogo de impresión.'))), controls, sheet));
@@ -542,7 +562,7 @@
   let currentNav = '';
   function renderShell() {
     const nav = U.$('#nav'); clear(nav);
-    NAV.forEach((g) => nav.appendChild(h('div', { class: 'nav-group' }, h('p', { class: 'nav-title' }, L(g.group)), h('ul', null, g.items.map((i) => h('li', null, h('a', { href: '#' + i.path, 'data-nav': i.id, 'aria-current': i.id === currentNav ? 'page' : null }, L(i))))))));
+    navGroups().forEach((g) => nav.appendChild(h('div', { class: 'nav-group' }, h('p', { class: 'nav-title' }, L(g.group)), h('ul', null, g.items.map((i) => h('li', null, h('a', { href: '#' + i.path, 'data-nav': i.id, 'aria-current': i.id === currentNav ? 'page' : null }, L(i))))))));
     const s = D().settings;
     const ctrl = U.$('#controls'); clear(ctrl);
     ctrl.append(h('div', { class: 'seg', role: 'group', 'aria-label': 'Language / Idioma' }, ['en', 'es'].map((l) => h('button', { type: 'button', class: 'seg-btn', lang: l, 'aria-pressed': s.lang === l, onclick: () => { s.lang = l; save(); applyTheme(); renderShell(); route(); } }, l.toUpperCase()))),
@@ -551,7 +571,7 @@
     U.$('#search').setAttribute('aria-label', T('Search', 'Buscar'));
     U.$('#menu-btn').setAttribute('aria-label', T('Menu', 'Menú'));
     U.$('.skip').textContent = T('Skip to content', 'Saltar al contenido');
-    U.$('#brand-sub').textContent = T('Japanese and English study desk', 'Escritorio de estudio de japonés e inglés');
+    U.$('#brand-sub').textContent = englishOn() ? T('Japanese and English study desk', 'Escritorio de estudio de japonés e inglés') : T('Japanese study desk', 'Escritorio de estudio de japonés');
   }
 
   /* search */
@@ -563,11 +583,11 @@
       clear(box);
       if (!q) { box.hidden = true; return; }
       const res = [];
-      ALL_NAV.forEach((n) => { if ((n.en + ' ' + n.es).toLowerCase().includes(q)) res.push({ kind: T('Page', 'Página'), label: L(n), href: '#' + n.path }); });
+      navGroups().flatMap((g) => g.items).forEach((n) => { if ((n.en + ' ' + n.es).toLowerCase().includes(q)) res.push({ kind: T('Page', 'Página'), label: L(n), href: '#' + n.path }); });
       const kq = /^[a-z']+$/.test(q) ? K.romajiToKana(q, 'hira', true).kana : '';
       K.KANA.forEach((e) => { if (res.filter((r) => r.k).length < 6 && (e.r === q || e.h === input.value.trim() || e.k === input.value.trim() || (kq && e.h === kq))) res.push({ k: 1, kind: T('Kana', 'Kana'), label: e.h + ' ' + e.k + ' · ' + e.r, href: '#/charts?k=' + encodeURIComponent(e.h) }); });
       D().words.forEach((w) => { if (res.filter((r) => r.w).length < 6 && (w.w.includes(input.value.trim()) || w.m.toLowerCase().includes(q) || (kq && K.toHira(w.w).includes(kq)))) res.push({ w: 1, kind: T('Word', 'Palabra'), label: w.w + ' — ' + w.m, href: '#/vocab?q=' + encodeURIComponent(w.w) }); });
-      D().en.journal.forEach((x) => { if (res.filter((r) => r.j).length < 4 && (x.phrase + ' ' + x.def).toLowerCase().includes(q)) res.push({ j: 1, kind: T('English journal', 'Diario de inglés'), label: x.phrase, href: '#/en/tools?tab=journal' }); });
+      if (englishOn()) D().en.journal.forEach((x) => { if (res.filter((r) => r.j).length < 4 && (x.phrase + ' ' + x.def).toLowerCase().includes(q)) res.push({ j: 1, kind: T('English journal', 'Diario de inglés'), label: x.phrase, href: '#/en/tools?tab=journal' }); });
       if (!res.length) box.appendChild(h('p', { class: 'muted pad' }, T('No results.', 'Sin resultados.')));
       else box.appendChild(h('ul', { role: 'listbox' }, res.slice(0, 14).map((r) => h('li', { role: 'option' }, h('a', { href: r.href, onclick: () => { close(); input.value = ''; } }, h('span', { class: 'sr-kind' }, r.kind), h('span', { lang: r.k || r.w ? 'ja' : null }, r.label))))));
       box.hidden = false;
@@ -584,6 +604,7 @@
     '/keyboard': { nav: 'keyboard', title: ['Kana keyboard', 'Teclado de kana'], f: keyboardPage }, '/vocab': { nav: 'vocab', title: ['Words', 'Palabras'], f: vocab },
     '/practice': { nav: 'practice', title: ['Practice', 'Práctica'], f: (host) => MS.session.hub(host) }, '/practice/run': { nav: 'practice', title: ['Practice session', 'Sesión de práctica'], f: (host) => MS.session.renderRun(host) },
     '/progress': { nav: 'progress', title: ['Progress', 'Progreso'], f: progress }, '/plan': { nav: 'plan', title: ['Study plan', 'Plan de estudio'], f: plan }, '/resources': { nav: 'resources', title: ['Resources', 'Recursos'], f: resourcesJp },
+    '/shared': { nav: 'shared', title: ['Shared words', 'Palabras compartidas'], f: (host) => MS.shared.page(host) },
     '/worksheet': { nav: 'practice', title: ['Printable worksheet', 'Hoja imprimible'], f: worksheet },
     '/en': { nav: 'en', title: ['English: level and goals', 'Inglés: nivel y metas'], f: (host) => MS.english.assess(host) }, '/en/plan': { nav: 'enplan', title: ['English: weekly plan', 'Inglés: plan semanal'], f: (host) => MS.english.plan(host) },
     '/en/tools': { nav: 'entools', title: ['English tools', 'Herramientas de inglés'], f: (host, q) => MS.english.tools(host, q.tab) }, '/en/resources': { nav: 'enres', title: ['English resources', 'Recursos de inglés'], f: (host) => MS.english.resources(host) },
@@ -597,9 +618,9 @@
   }
   let lastKey = '';
   function route() {
-    MS.session.cleanup(); MS.english.cleanup();
+    MS.session.cleanup(); MS.english.cleanup(); MS.shared.cleanup();
     const { path, query } = parseHash();
-    const r = ROUTES[path] || ROUTES['/home'];
+    const r = (!englishOn() && /^\/en(\/|$)/.test(path) ? null : ROUTES[path]) || ROUTES['/home'];
     currentNav = r.nav;
     U.$$('#nav a').forEach((a) => (a.getAttribute('data-nav') === currentNav ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
     document.title = T(r.title[0], r.title[1]) + ' · Masume';
