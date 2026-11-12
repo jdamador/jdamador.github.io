@@ -486,14 +486,14 @@
       }
       const items = rowsOf();
       if (!items.length) { sheet.appendChild(h('p', { class: 'muted' }, T('Nothing to print yet. Choose kana, or add words first.', 'Aún no hay nada para imprimir. Elige kana o agrega palabras primero.'))); return; }
-      // Each sound/word gets prefs.reps rows. The first row has the faint tracing copies;
-      // extra rows show the model once and leave the rest empty.
+      // Each sound/word gets prefs.reps rows. The first row has the model and faint tracing copies;
+      // extra rows are left fully empty for practice.
       items.forEach((t) => {
         const chars = [...t]; const cols = Math.max(prefs.cols, chars.length * 2 + 1);
         for (let rep = 0; rep < prefs.reps; rep++) {
           const row = h('div', { class: 'ws-row' + (prefs.reps > 1 && rep === prefs.reps - 1 ? ' ws-last' : ''), style: { '--n': cols } });
           let n = 0;
-          chars.forEach((c) => { row.appendChild(h('span', { class: 'ws-cell model', lang: 'ja' }, c)); n++; });
+          if (rep === 0) chars.forEach((c) => { row.appendChild(h('span', { class: 'ws-cell model', lang: 'ja' }, c)); n++; });
           if (rep === 0) for (let r = 0; r < prefs.faint; r++) chars.forEach((c) => { if (n < cols) { row.appendChild(h('span', { class: 'ws-cell faint', lang: 'ja' }, c)); n++; } });
           while (n < cols) { row.appendChild(h('span', { class: 'ws-cell' })); n++; }
           sheet.appendChild(row);
