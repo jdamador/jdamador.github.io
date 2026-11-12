@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /rooms/{room}/words/{id} {
+      allow read, delete: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['w', 'm', 'lesson', 'ex', 'note', 'img', 'by', 'added', 'edited'])
+        && request.resource.data.w is string && request.resource.data.w.size() > 0 && request.resource.data.w.size() <= 40
+        && request.resource.data.m is string && request.resource.data.m.size() > 0 && request.resource.data.m.size() <= 120
+        && request.resource.data.lesson is string && request.resource.data.lesson.size() <= 40
+        && request.resource.data.ex is string && request.resource.data.ex.size() <= 200
+        && request.resource.data.note is string && request.resource.data.note.size() <= 200
+        && request.resource.data.img is string && request.resource.data.img.size() <= 300000
+        && request.resource.data.by is string && request.resource.data.by.size() <= 30
+        && request.resource.data.added is int && request.resource.data.edited is int;
+    }
+  }
+}
