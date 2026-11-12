@@ -10,6 +10,7 @@
     const el = document.createElement(tag);
     for (const k in props || {}) {
       const v = props[k];
+      if (k.slice(0, 5) === 'aria-' && typeof v === 'boolean') { el.setAttribute(k, String(v)); continue; }   // aria-pressed="false" must be written, not dropped
       if (v == null || v === false) continue;
       if (k === 'class') el.className = v;
       else if (k === 'style' && typeof v === 'object') { for (const sk in v) { if (sk.slice(0, 2) === '--') el.style.setProperty(sk, v[sk]); else el.style[sk] = v[sk]; } }

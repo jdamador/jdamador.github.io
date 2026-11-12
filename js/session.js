@@ -485,7 +485,7 @@
   function hub(host) {
     stopAll();
     const D = MS.store.data;
-    const prefs = Object.assign({ sets: ['all'], scripts: ['hira'], groups: ['basic'], only: 'all', length: 10, acts: P.PRESETS.all.slice(), mode: 'practice', minutes: 10 }, D.practicePrefs || {});
+    const prefs = Object.assign({ sets: ['all'], scripts: ['hira'], groups: ['basic'], only: 'all', off: [], length: 10, acts: P.PRESETS.all.slice(), mode: 'practice', minutes: 10 }, D.practicePrefs || {});
     const save = () => { D.practicePrefs = prefs; MS.store.save(); };
     const toggle = (arr, v, on) => { const i = arr.indexOf(v); if (on && i < 0) arr.push(v); if (!on && i >= 0) arr.splice(i, 1); save(); };
     const chk = (label, checked, on, extra) => h('label', { class: 'chip' }, h('input', { type: 'checkbox', checked, onchange: (e) => on(e.target.checked) }), h('span', null, label, extra ? h('small', null, ' ' + extra) : null));
@@ -498,7 +498,46 @@
       .concat(lessons.map((l) => ['lesson:' + l, l || T('No lesson', 'Sin lección'), D.words.filter((w) => (w.lesson || '') === l).length]));
 
     const kanaSummary = h('p', { class: 'muted' });
-    const updateKana = () => { const n = P.kanaItemsFor({ scripts: prefs.scripts, groups: prefs.groups, only: prefs.only }, D.srs, D.known, D.mistakes).length; kanaSummary.textContent = T(n + ' kana in this selection', n + ' kana en esta selección'); };
+    const kanaScope = () => ({ scripts: prefs.scripts, groups: prefs.groups, only: prefs.only, off: prefs.off });
+
+    /* "Choose kana": a chart-like table of the selected groups. Every kana starts ticked; unticked ones go
+       into prefs.off (by hiragana, so one tick covers both scripts) and never appear in practice. */
+    const GROUPS = [['basic', T('Basic 46', 'Básicos 46')], ['dakuten', T('Dakuten', 'Dakuten')], ['handakuten', T('Handakuten', 'Handakuten')], ['small', T('Small kana', 'Kana pequeños')], ['yoon', T('Combinations (yoon)', 'Combinaciones (yōon)')]];
+    const pickCount = h('span', { class: 'muted' });
+    const pickBody = h('div', { class: 'kpick-body' });
+    const kanaPicker = h('details', { class: 'kpick' }, h('summary', null, T('Choose kana', 'Elegir kana'), ' ', pickCount), pickBody);
+    const setOff = (hs, on) => { hs.forEach((c) => toggle(prefs.off, c, !on)); renderPicker(); updateKana(); };
+    function renderPicker() {
+      const showKata = prefs.scripts.length === 1 && prefs.scripts[0] === 'kata';
+      const groups = GROUPS.filter(([g]) => prefs.groups.includes(g));
+      let total = 0, on = 0;
+      clear(pickBody);
+      if (!groups.length) pickBody.appendChild(h('p', { class: 'muted' }, T('Select a group above first.', 'Primero elige un grupo arriba.')));
+      groups.forEach(([g, label]) => {
+        const entries = K.KANA.filter((e) => e.g === g);
+        const rows = [];
+        entries.forEach((e) => { const r = rows.find((x) => x.s === e.s); if (r) r.list.push(e); else rows.push({ s: e.s, list: [e] }); });
+        const hs = entries.map((e) => e.h);
+        total += hs.length; on += hs.filter((c) => !prefs.off.includes(c)).length;
+        pickBody.appendChild(h('div', { class: 'kpick-group' },
+          h('div', { class: 'row between' }, h('h3', null, label),
+            h('div', { class: 'row' },
+              h('button', { class: 'btn ghost sm', type: 'button', onclick: () => setOff(hs, true) }, T('All', 'Todos')),
+              h('button', { class: 'btn ghost sm', type: 'button', onclick: () => setOff(hs, false) }, T('None', 'Ninguno')))),
+          rows.map((r) => {
+            const rh = r.list.map((e) => e.h);
+            const allOn = rh.every((c) => !prefs.off.includes(c));
+            return h('div', { class: 'kpick-row' },
+              h('button', { class: 'kpick-label', type: 'button', 'aria-pressed': allOn, title: T('Select or clear this row', 'Marcar o quitar esta fila'), onclick: () => setOff(rh, !allOn) }, r.list[0].r),
+              r.list.map((e) => {
+                const isOn = !prefs.off.includes(e.h), ch = showKata ? e.k : e.h;
+                return h('button', { class: 'kpick-cell', type: 'button', lang: 'ja', 'aria-pressed': isOn, 'aria-label': ch + ' ' + e.r, onclick: () => setOff([e.h], !isOn) }, ch);
+              }));
+          })));
+      });
+      pickCount.textContent = groups.length ? T('(' + on + ' of ' + total + ' selected)', '(' + on + ' de ' + total + ' elegidos)') : '';
+    }
+    const updateKana = () => { const n = P.kanaItemsFor(kanaScope(), D.srs, D.known, D.mistakes).length; kanaSummary.textContent = T(n + ' kana in this selection', n + ' kana en esta selección'); };
 
     const actGroups = [['write', T('Writing words from memory', 'Escribir palabras de memoria')], ['kana', T('Writing and recognising kana', 'Escribir y reconocer kana')], ['recog', T('Recognition and meaning', 'Reconocimiento y significado')]];
     const actBoxes = [];
@@ -532,9 +571,10 @@
           nWords ? h('div', { class: 'chips' }, sets.filter((s) => s[2] > 0 || s[0] === 'all').map((s) => chk(s[1], prefs.sets.includes(s[0]), (on) => toggle(prefs.sets, s[0], on), '(' + s[2] + ')'))) : h('p', { class: 'muted' }, T('No words yet.', 'Sin palabras todavía.'))),
         h('fieldset', { class: 'fs' }, h('legend', null, T('Kana', 'Kana')),
           h('div', { class: 'chips' },
-            chk('ひらがな', prefs.scripts.includes('hira'), (on) => { toggle(prefs.scripts, 'hira', on); updateKana(); }),
-            chk('カタカナ', prefs.scripts.includes('kata'), (on) => { toggle(prefs.scripts, 'kata', on); updateKana(); })),
-          h('div', { class: 'chips' }, [['basic', T('Basic 46', 'Básicos 46')], ['dakuten', T('Dakuten', 'Dakuten')], ['handakuten', T('Handakuten', 'Handakuten')], ['small', T('Small kana', 'Kana pequeños')], ['yoon', T('Combinations (yoon)', 'Combinaciones (yōon)')]].map(([g, l]) => chk(l, prefs.groups.includes(g), (on) => { toggle(prefs.groups, g, on); updateKana(); }))),
+            chk('ひらがな', prefs.scripts.includes('hira'), (on) => { toggle(prefs.scripts, 'hira', on); renderPicker(); updateKana(); }),
+            chk('カタカナ', prefs.scripts.includes('kata'), (on) => { toggle(prefs.scripts, 'kata', on); renderPicker(); updateKana(); })),
+          h('div', { class: 'chips' }, GROUPS.map(([g, l]) => chk(l, prefs.groups.includes(g), (on) => { toggle(prefs.groups, g, on); renderPicker(); updateKana(); }))),
+          kanaPicker,
           h('label', { class: 'inline' }, T('Which kana: ', 'Cuáles kana: '), h('select', { onchange: (e) => { prefs.only = e.target.value; save(); updateKana(); } }, [['all', T('All in this selection', 'Todos de esta selección')], ['unknown', T('Not marked as known', 'No marcados como conocidos')], ['known', T('Marked as known', 'Marcados como conocidos')], ['weak', T('My weak kana', 'Mis kana débiles')]].map(([v, l]) => h('option', { value: v, selected: prefs.only === v }, l)))),
           kanaSummary),
         h('fieldset', { class: 'fs' }, h('legend', null, T('How many questions', 'Cuántas preguntas')),
@@ -545,14 +585,14 @@
           h('div', { class: 'chips' }, [['practice', T('Practice', 'Práctica')], ['quiz', T('Quiz', 'Quiz')], ['exam', T('Exam simulator', 'Simulador de examen')]].map(([m, l]) => radio('mode', l, prefs.mode === m, () => { prefs.mode = m; save(); setModeDesc(); }))), modeDesc, minutesField),
         h('div', { class: 'row actions' }, h('button', { class: 'btn primary lg', type: 'submit' }, T('Generate practice', 'Generar práctica')))));
     clear(host).appendChild(view);
-    updateKana(); setModeDesc();
+    renderPicker(); updateKana(); setModeDesc();
 
     function generate() {
       save();
-      launch({ sets: prefs.sets, kana: { scripts: prefs.scripts, groups: prefs.groups, only: prefs.only }, length: prefs.length, acts: prefs.acts, mode: prefs.mode, minutes: prefs.mode === 'exam' ? prefs.minutes : undefined, prioritize: true });
+      launch({ sets: prefs.sets, kana: kanaScope(), length: prefs.length, acts: prefs.acts, mode: prefs.mode, minutes: prefs.mode === 'exam' ? prefs.minutes : undefined, prioritize: true });
     }
     function launchSpeed() {
-      launch({ kana: { scripts: prefs.scripts.length ? prefs.scripts : ['hira'], groups: prefs.groups.length ? prefs.groups : ['basic'], only: 'all' }, acts: ['k_speed'], length: 1, mode: 'practice' });
+      launch({ kana: { scripts: prefs.scripts.length ? prefs.scripts : ['hira'], groups: prefs.groups.length ? prefs.groups : ['basic'], only: 'all', off: prefs.off }, acts: ['k_speed'], length: 1, mode: 'practice' });
     }
     function practiceBank() {
       const keys = Object.keys(D.mistakes);

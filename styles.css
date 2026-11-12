@@ -338,6 +338,18 @@ dialog::backdrop { background: rgba(10, 20, 16, .55); }
 .kt-ja { font-size: 1.45rem; line-height: 1.15; } .kt-r { font-size: .72rem; color: var(--ink-soft); }
 .ktile.known { background: var(--hi); color: var(--on-hi); } .ktile.known .kt-r { color: var(--on-hi); }
 .ktile.sel { border-color: var(--ink); border-width: 3px; }
+
+/* Practice › Kana › Choose kana: ticked = highlighted tile, unticked = faded with a dashed border */
+.kpick { margin: 4px 0 10px; }
+.kpick summary { cursor: pointer; font-weight: 700; padding: 6px 0; min-height: 32px; }
+.kpick-group { margin: 8px 0 14px; }
+.kpick-group h3 { font-size: 1rem; margin: 0; }
+.kpick-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.kpick-label { width: 3.4rem; min-height: 44px; font: 600 .82rem var(--f-body); color: var(--ink-soft); background: transparent; border: 1.5px solid var(--grid); border-radius: 3px; cursor: pointer; }
+.kpick-label[aria-pressed="true"] { color: var(--ink); border-color: var(--grid-strong); }
+.kpick-cell { min-width: 44px; min-height: 44px; padding: 2px 6px; font: 400 1.35rem/1 var(--f-kana); background: var(--hi); color: var(--on-hi); border: 1.5px solid var(--ink); border-radius: 3px; cursor: pointer; }
+.kpick-cell[aria-pressed="false"] { background: var(--sheet); color: var(--ink-soft); border: 1.5px dashed var(--grid-strong); opacity: .6; }
+.kpick-label:focus-visible, .kpick-cell:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .detail { position: sticky; top: 76px; background: var(--sheet); border: 2px solid var(--ink); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; }
 .detail .sv { --sv: 100%; } .detail .sv-row { --sv: 100%; } .detail .masu { --cell: 150px; }
 .detail-empty p { color: var(--ink-soft); margin: 0; }

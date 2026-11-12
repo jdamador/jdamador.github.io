@@ -34,7 +34,8 @@
     const scripts = scope.scripts && scope.scripts.length ? scope.scripts : ['hira'];
     const groups = scope.groups && scope.groups.length ? scope.groups : ['basic'];
     let items = [];
-    K().KANA.forEach((e) => { if (groups.includes(e.g)) scripts.forEach((s) => items.push(kanaItem(e, s))); });
+    const off = new Set(scope.off || []);   // hiragana of kana the learner unticked (applies to both scripts)
+    K().KANA.forEach((e) => { if (groups.includes(e.g) && !off.has(e.h)) scripts.forEach((s) => items.push(kanaItem(e, s))); });
     if (scope.only === 'known') items = items.filter((i) => known && known[i.ch]);
     else if (scope.only === 'unknown') items = items.filter((i) => !(known && known[i.ch]));
     else if (scope.only === 'weak') {
@@ -47,15 +48,19 @@
     return items;
   }
 
-  /* Distractor kana (as chars) in the same script as the item, lookalikes first. */
+  /* Distractor kana (as chars) in the same script as the item, lookalikes first.
+     Drawn from the kana the learner selected (cx.kanaAll); only if those run out, from every kana (cx.kanaFull). */
   function kanaOptions(item, n, cx, sound) {
     const rng = cx.rng;
-    const sameScript = cx.kanaAll.filter((i) => i.script === item.script && i.ch !== item.ch && (!sound || soundOk(i.e)));
+    const fit = (i) => i.script === item.script && i.ch !== item.ch && (!sound || soundOk(i.e));
+    const sameScript = cx.kanaAll.filter(fit);
+    const allowed = new Set(sameScript.map((i) => i.ch));
     const grp = K().LOOKALIKES.find((g) => g.includes(item.ch)) || [];
-    let cand = shuf(grp.filter((c) => c !== item.ch), rng).slice(0, 2);
+    let cand = shuf(grp.filter((c) => c !== item.ch && allowed.has(c)), rng).slice(0, 2);
     const sameGroup = shuf(sameScript.filter((i) => i.e.g === item.e.g).map((i) => i.ch), rng);
     const rest = shuf(sameScript.map((i) => i.ch), rng);
-    cand = uniq(cand.concat(sameGroup, rest));
+    const extra = shuf((cx.kanaFull || []).filter((i) => fit(i) && !allowed.has(i.ch)).map((i) => i.ch), rng);
+    cand = uniq(cand.concat(sameGroup, rest, extra));
     const out = [];
     const seenR = new Set([item.e.r]);
     for (const c of cand) {
@@ -148,7 +153,7 @@
   def('k_lookalike', 'kana', 'kana', 'Look-alike drill', 'Ejercicio de kana parecidos', (it, cx) => {
     const g = K().LOOKALIKES.find((x) => x.includes(it.ch));
     if (!g || !soundOk(it.e)) return null;
-    let opts = g.slice();
+    let opts = g.filter((c) => c === it.ch || cx.okKana(c));
     const extra = kanaOptions(it, 3, cx, true).filter((c) => !opts.includes(c));
     while (opts.length < 3 && extra.length) opts.push(extra.shift());
     opts = shuf(opts.slice(0, 4).includes(it.ch) ? opts.slice(0, 4) : opts.slice(0, 3).concat(it.ch), cx.rng);
@@ -156,15 +161,18 @@
   }, { audio: true });
   def('k_voicing', 'kana', 'kana', 'Voicing and length drill (audio)', 'Sonorización y duración (audio)', (it, cx) => {
     const hira = K().toHira(it.ch);
-    const g = K().VOICING.find((x) => x.includes(hira));
-    const useWords = !g || cx.rng() < 0.35;
+    const g0 = K().VOICING.find((x) => x.includes(hira));
+    const g = g0 && g0.filter(cx.okKana).length >= 2 ? g0.filter(cx.okKana) : null;
+    const pairs = K().MINIMAL_PAIRS.filter((p) => p.every((w) => [...K().toHira(w[0])].every((c) => c === 'ー' || cx.okKana(c))));
+    const useWords = pairs.length && (!g || cx.rng() < 0.35);
+    if (!g && !useWords) return null;
     if (!useWords) {
       const members = g.map((c) => (it.script === 'kata' ? K().toKata(c) : c));
       const target = members.includes(it.ch) && cx.rng() < 0.6 ? it.ch : pick(members, cx.rng);
       const opts = shuf(members, cx.rng);
       return { kind: 'choice', itemKeys: ['k:' + target], kanaChars: [target], prompt: { audio: target, listen: true }, options: opts.map((o) => ({ text: o, ja: true })), answerIndex: opts.indexOf(target), promptText: '🔊', expected: target, speak: target, needsAudio: true };
     }
-    const pair = pick(K().MINIMAL_PAIRS, cx.rng);
+    const pair = pick(pairs, cx.rng);
     const lang = cx.lang === 'es' ? 2 : 1;
     const which = cx.rng() < 0.5 ? 0 : 1;
     const opts = shuf([0, 1], cx.rng).map((i) => ({ text: pair[i][0], sub: pair[i][lang], ja: true }));
@@ -260,7 +268,9 @@
 
     const wordItems = (data.selWords || []).map(wordItem);
     const kanaItems = data.kanaItems || [];
-    const cx = { rng, words: data.allWords || [], selWords: data.selWords || [], kanaPool: kanaItems, kanaAll: data.kanaAll && data.kanaAll.length ? data.kanaAll : kanaItems, mode, lang: data.lang || 'en' };
+    const cx = { rng, words: data.allWords || [], selWords: data.selWords || [], kanaPool: kanaItems, kanaAll: data.kanaAll && data.kanaAll.length ? data.kanaAll : kanaItems, kanaFull: data.kanaFull || data.kanaAll || kanaItems, okKana: null, mode, lang: data.lang || 'en' };
+    const okH = new Set(cx.kanaAll.map((i) => i.e.h));
+    cx.okKana = (c) => okH.has(K().toHira(c));   // is this kana inside the learner's selection?
 
     const pools = {
       wordK: wordItems.filter((i) => kanaOnlyWord(i.w)),
@@ -341,8 +351,11 @@
     let kanaItems;
     if (cfg.kanaKeys) kanaItems = cfg.kanaKeys.map((k) => { const ch = k.slice(2), e = K().entryOf(ch); return e ? kanaItem(e, K().isKata(ch[0]) ? 'kata' : 'hira') : null; }).filter(Boolean);
     else kanaItems = kanaItemsFor(cfg.kana, D.srs, D.known, D.mistakes);
-    const kanaAll = kanaItemsFor({ scripts: ['hira', 'kata'], groups: ['basic', 'dakuten', 'handakuten', 'yoon'] }, D.srs, D.known, D.mistakes);
-    return { allWords: D.words, selWords: [...sel.values()], kanaItems, kanaAll, srs: D.srs, lang: D.settings.lang };
+    const every = { scripts: ['hira', 'kata'], groups: ['basic', 'dakuten', 'handakuten', 'yoon'] };
+    const kanaFull = kanaItemsFor(every, D.srs, D.known, D.mistakes);
+    // Options and drills stay inside what the learner chose (groups and ticked kana), in both scripts.
+    const kanaAll = cfg.kana ? kanaItemsFor({ scripts: ['hira', 'kata'], groups: cfg.kana.groups, off: cfg.kana.off }, D.srs, D.known, D.mistakes) : kanaFull;
+    return { allWords: D.words, selWords: [...sel.values()], kanaItems, kanaAll, kanaFull, srs: D.srs, lang: D.settings.lang };
   }
 
   /* The daily 10 minutes: due items first, a few new kana, then top up from weak spots */

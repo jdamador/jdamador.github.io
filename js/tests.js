@@ -115,6 +115,19 @@
   const SAMPLE = [['ねこ', 'cat'], ['いぬ', 'dog'], ['さかな', 'fish'], ['ありがとう', 'thank you'], ['コーヒー', 'coffee'], ['ラーメン', 'ramen']].map((x, i) => ({ id: 'w' + i, w: x[0], m: x[1], lesson: 'Sample', ex: '', note: '', hard: false, img: 'pic' + i + '.png' }));
   const KA = P.kanaItemsFor({ scripts: ['hira', 'kata'], groups: ['basic', 'dakuten', 'handakuten', 'yoon'] }, {}, {}, {});
   const DATA = { allWords: SAMPLE, selWords: SAMPLE, kanaItems: KA, kanaAll: KA, srs: {}, lang: 'en' };
+  test('chosen kana: unticked kana never appear in kana questions or their options', () => {
+    const off = [...'さしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん'];
+    eq(P.kanaItemsFor({ scripts: ['hira', 'kata'], groups: ['basic'], off: ['か'] }, {}, {}, {}).length, 90, 'か off in both scripts');
+    const pool = P.kanaItemsFor({ scripts: ['hira'], groups: ['basic'], off }, {}, {}, {});
+    const allowed = P.kanaItemsFor({ scripts: ['hira', 'kata'], groups: ['basic'], off }, {}, {}, {});
+    const okH = new Set(allowed.map((i) => i.e.h));
+    const acts = P.PRESETS.kana;
+    for (let seed = 1; seed <= 10; seed++) {
+      const { questions } = P.generate({ acts, length: 30, mode: 'practice' }, { allWords: [], selWords: [], kanaItems: pool, kanaAll: allowed, kanaFull: KA, srs: {}, lang: 'en' }, P.makeRng(seed));
+      ok(questions.length > 0, 'no questions');
+      questions.forEach((q) => (JSON.stringify(q.options || []) + q.expected).replace(/[^ぁ-ゖ]/g, '').split('').forEach((c) => ok(okH.has(c), q.act + ' used ' + c)));
+    }
+  });
   const NON_SPECIAL = P.ACT_ORDER;
   NON_SPECIAL.forEach((act) => {
     test('generator: ' + act + ' builds valid questions from the sample words', () => {
